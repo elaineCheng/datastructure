@@ -4,7 +4,21 @@ import os
 import heapq
 import sys
 
+"""
+I’d use an external-memory approach with three phases: partition, deduplicate, and merge.
+Hashing solves the memory problem; storing the original position solves the ordering problem.
 
+Phase 1 I stream through the input once. For each line, I hash its contents and use the hash modulo the number of partitions to decide which temporary file receives it.
+Hash partitioning destroys the original ordering, so I also store the original line number alongside each line.
+
+Phase 2 Because identical lines are guaranteed to be in the same partition, this local seen dictionary is actually sufficient for global deduplication.
+After deduplication, the records are in hash-partition order, not original input order.
+
+Phase 3 At this point, I have several independently sorted streams. I don't want to load them all into memory, so I perform a k-way merge. heapq.merge() does this as a streaming operation:The key benefit is that we don't need to load all partitions into memory.
+
+
+There are two important invariants. First, identical lines always go to the same partition because partitioning is deterministic based on the line's hash. Therefore, deduplicating each partition independently removes all global duplicates. Second, every surviving record retains its original input position, and every partition is sorted by that position. The final k-way merge therefore reconstructs the global order of first occurrences.
+"""
 def get_partition(line, num_partitions):
     """
     Deterministically routes a line to a specific partition index using MD5 hashing.
